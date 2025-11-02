@@ -148,6 +148,37 @@ def send_report_via_email(sender_email, sender_password, recipient_email):
         smtp.login(sender_email, sender_password)
         smtp.send_message(msg)
 
+def send_report_via_email(sender_email, sender_password, recipient_email):
+    """Send cheating report via SMTP with one snapshot per student attached."""
+    msg = EmailMessage()
+    msg["Subject"] = "Cheating Detection Report"
+    msg["From"] = sender_email
+    msg["To"] = recipient_email
+
+    # Build text summary
+    body = "Cheating Report Summary:\n\n"
+    for pid, data in cheating_log.items():
+        body += f"Student ID {pid}: {data['count']} times\n"
+    msg.set_content(body)
+
+    # Attach one snapshot per student
+    for pid, data in cheating_log.items():
+        if "snapshot" in data:
+            snap = data["snapshot"]
+            _, img_bytes = cv2.imencode(".jpg", snap)
+            img_data = img_bytes.tobytes()
+            msg.add_attachment(
+                img_data,
+                maintype="image",
+                subtype=imghdr.what(None, img_data),
+                filename=f"student{pid}_snapshot.jpg"
+            )
+
+    # Send via Gmail SMTP
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(sender_email, sender_password)
+        smtp.send_message(msg)
+
 # --- Streamlit UI ---
 st.title("📹 Multi-Model Cheating Detection with Tracking & Report")
 
